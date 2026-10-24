@@ -37,6 +37,14 @@ const SIDEBAR_AUTOCLOSE = 928;
 
 const FAMILY_BUILD = require("../package.json").familyBuild === true;
 const PRODUCT_NAME = FAMILY_BUILD ? "LearnHarness Family" : "LearnHarness";
+if (FAMILY_BUILD) {
+	// GUI launches can inherit the operator's shell credentials. This app uses
+	// its saved gateway key only, including when launched by an agent harness.
+	for (const name of ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN"]) {
+		delete process.env[name];
+	}
+	process.env.LH_IGNORE_ENV_KEYS = "1";
+}
 
 // APP NAME → userData (owner, 2026-10-10): the Application Support dir is
 // exactly "LearnHarness" in dev AND packaged. Packaged Electron would

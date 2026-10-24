@@ -35,6 +35,7 @@ const gatewaySchema = z.object({
 			&& !parsed.search && !parsed.hash;
 	}, "Expected an HTTP(S) base URL without credentials, query, or fragment"),
 	models: z.array(modelSchema).min(1),
+	transcriptionModel: z.string().min(1).optional(),
 }).strict().refine((config) => new Set(config.models.map((model) => model.id)).size === config.models.length,
 	"Model IDs must be unique");
 
@@ -53,6 +54,11 @@ export function createLiteLLMProvider(raw: unknown) {
 
 /** Missing is optional. Invalid configuration fails visibly instead of routing elsewhere. */
 export function localLiteLLMProvider(file = PROVIDER_FILE) {
+	const config = localLiteLLMConfig(file);
+	return config ? createLiteLLMProvider(config) : undefined;
+}
+
+export function localLiteLLMConfig(file = PROVIDER_FILE) {
 	if (!fs.existsSync(file)) return undefined;
-	return createLiteLLMProvider(JSON.parse(fs.readFileSync(file, "utf-8")));
+	return gatewaySchema.parse(JSON.parse(fs.readFileSync(file, "utf-8")));
 }

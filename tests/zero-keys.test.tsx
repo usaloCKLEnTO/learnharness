@@ -13,7 +13,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { hasProviderKey, strongKeyless, ZeroKeysPill } from "../components/setup-cta.tsx";
 import type { ModelCatalogResponse } from "../src/core/index.ts";
 import { SetupKeysBody } from "../components/setup-dialog.tsx";
-import { DICTATION_KEYLESS, DEEPGRAM_KEY_ID } from "../components/dictation.tsx";
+import { DICTATION_KEYLESS, DICTATION_KEY_ID } from "../components/dictation.tsx";
 import type { AuthKeyStatus } from "../src/core/auth-keys.ts";
 import type { ProviderKeyInfo } from "../components/settings/keys-section.tsx";
 
@@ -112,11 +112,11 @@ describe("SetupKeysBody — stage 1's self-contained first-key screen", () => {
 
 describe("the dictation keyless seam (owner dictation trio)", () => {
 	it("the client-authored short line — not the route's dev-speak", () => {
-		assert.equal(DICTATION_KEYLESS, "Dictation needs a Deepgram key");
+		assert.equal(DICTATION_KEYLESS, "Dictation needs the LiteLLM connection");
 	});
 
-	it("the Deepgram row id matches the keys store (KeysSection openRow)", () => {
-		assert.equal(DEEPGRAM_KEY_ID, "DEEPGRAM_API_KEY");
+	it("the LiteLLM row id matches the keys store (KeysSection openRow)", () => {
+		assert.equal(DICTATION_KEY_ID, "LITELLM_API_KEY");
 	});
 });
 /** A minimal catalog double — only the two halves the strong-keyless guard

@@ -13,11 +13,10 @@
  *                             version was a 256ms IO buffer — see
  *                             ~/.pi/agent/extensions/dictate).
  *   { type: "audio", buffer } — Int16Array frames of 2048 samples (128ms),
- *                             zero-copy (transferred). Deepgram recommends
- *                             ~100–200ms chunks; silence is streamed too,
- *                             so the socket never idles (no KeepAlive
- *                             needed — the 10s NET-0001 timeout only bites
- *                             a stream that stops SENDING).
+ *                             zero-copy (transferred). The renderer retains
+ *                             these locally for the WAV upload. A flush
+ *                             request transfers the partial final frame,
+ *                             then acknowledges that capture is complete.
  *
  * Ships as a static file under public/ so it rides the standalone bundle.
  * Plain JS by necessity (worklets run outside the module graph).
@@ -27,6 +26,15 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
 		super();
 		this.frame = new Int16Array(2048);
 		this.count = 0;
+		this.port.onmessage = (event) => {
+			if (event.data?.type !== "flush") return;
+			if (this.count > 0) {
+				const tail = this.frame.slice(0, this.count);
+				this.port.postMessage({ type: "audio", buffer: tail }, [tail.buffer]);
+				this.count = 0;
+			}
+			this.port.postMessage({ type: "flushed" });
+		};
 	}
 
 	process(inputs) {
