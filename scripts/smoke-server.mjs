@@ -34,10 +34,19 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const STANDALONE = path.join(ROOT, ".next", "standalone");
+const appIndex = process.argv.indexOf("--app");
+if (appIndex >= 0 && !process.argv[appIndex + 1]?.endsWith(".app")) {
+	throw new Error("--app requires the path to a packaged macOS .app bundle");
+}
+const APP = appIndex >= 0 ? path.resolve(process.argv[appIndex + 1]) : undefined;
+const STANDALONE = APP
+	? path.join(APP, "Contents", "Resources", "server", "standalone")
+	: path.join(ROOT, ".next", "standalone");
 const SERVER = path.join(STANDALONE, "server.js");
-const ELECTRON_MODE = process.argv.includes("--electron");
-const RUNTIME = ELECTRON_MODE ? createRequire(import.meta.url)("electron") : process.execPath;
+const ELECTRON_MODE = Boolean(APP) || process.argv.includes("--electron");
+const RUNTIME = APP
+	? path.join(APP, "Contents", "MacOS", path.basename(APP, ".app"))
+	: ELECTRON_MODE ? createRequire(import.meta.url)("electron") : process.execPath;
 
 const POLL_MS = 500;
 const BOOT_TIMEOUT_MS = 30_000;

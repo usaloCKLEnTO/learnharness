@@ -6,6 +6,8 @@ extraMetadata:
 mac:
   icon: build/icon.icns
   identity: '-'
+  entitlements: build/entitlements.family.mac.plist
+  entitlementsInherit: build/entitlements.family.mac.plist
   notarize: false
   target:
     - dmg
