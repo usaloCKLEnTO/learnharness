@@ -93,7 +93,7 @@ export interface ResearcherRunOptions {
 export async function runResearcherAgent(prompt: string, opts: ResearcherRunOptions = {}): Promise<string> {
 	const tools = Object.values(createWebTools(opts.search ?? (() => null)));
 	if (opts.pdfDir) tools.push(...Object.values(createPdfReadTools(opts.pdfDir)));
-	const { text } = await runSubagent(tools, {
+	const { text, limitReached } = await runSubagent(tools, {
 		role: "researcher",
 		prompt,
 		engine: opts.engine,
@@ -104,6 +104,7 @@ export async function runResearcherAgent(prompt: string, opts: ResearcherRunOpti
 		onToolStart: opts.onToolStart,
 		chatId: opts.chatId,
 	});
+	if (limitReached) throw new Error("Research reached its 12-step limit before producing a final brief");
 	return text;
 }
 

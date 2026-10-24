@@ -1,12 +1,14 @@
 import fs from "node:fs";
 import { createProvider, envApiKeyAuth, type Model } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
 import { z } from "zod";
 import { PROVIDER_FILE } from "../../config.ts";
 
 const level = z.enum(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 const modelSchema = z.object({
 	id: z.string().min(1),
+	api: z.enum(["openai-completions", "openai-responses"]).default("openai-completions"),
 	name: z.string().min(1),
 	contextWindow: z.number().int().positive(),
 	maxTokens: z.number().int().positive(),
@@ -42,13 +44,16 @@ const gatewaySchema = z.object({
 export function createLiteLLMProvider(raw: unknown) {
 	const config = gatewaySchema.parse(raw);
 	const baseUrl = config.baseUrl.replace(/\/+$/, "");
-	const models: Model<"openai-completions">[] = config.models.map((model) => ({
-		...model, api: "openai-completions", provider: "litellm", baseUrl,
+	const models: Model<"openai-completions" | "openai-responses">[] = config.models.map((model) => ({
+		...model, provider: "litellm", baseUrl,
 	}));
 	return createProvider({
 		id: "litellm", name: "LiteLLM", baseUrl,
 		auth: { apiKey: envApiKeyAuth("LiteLLM API key", ["LITELLM_API_KEY"]) },
-		models, api: openAICompletionsApi(),
+		models, api: {
+			"openai-completions": openAICompletionsApi(),
+			"openai-responses": openAIResponsesApi(),
+		},
 	});
 }
 

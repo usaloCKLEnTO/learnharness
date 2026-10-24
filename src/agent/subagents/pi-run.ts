@@ -50,6 +50,8 @@ export interface SubagentRunResult {
 	newMessages: AgentMessage[];
 	/** The final assistant text (the deliverable). */
 	text: string;
+	/** The budget ended on a tool call rather than a final assistant answer. */
+	limitReached: boolean;
 }
 
 export function subagentEngine(role: ModelRole, override?: PiEngine): PiEngine {
@@ -149,5 +151,5 @@ export async function runSubagent(tools: AgentTool<any, any>[], opts: SubagentRu
 				.map((c) => c.text)
 				.join("")
 		: "";
-	return { newMessages, text };
+	return { newMessages, text, limitReached: turns >= opts.maxTurns && last?.stopReason === "toolUse" };
 }
