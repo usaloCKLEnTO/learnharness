@@ -33,7 +33,7 @@ describe("web_search on the injected port (web.ts)", () => {
 		const { web_search } = createWebTools(() => null);
 		const out = await web_search!.execute!("c1", { query: "anything" });
 		assert.match(String(out.details), /not available: no search engine is configured/);
-		assert.match(String(out.details), /Tavily or Brave/);
+		assert.match(String(out.details), /Tavily, Brave, or Exa/);
 	});
 
 	it("a live provider returns its hits (count defaults to 5)", async () => {

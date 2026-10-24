@@ -177,6 +177,8 @@ describe("sanitizeUserSettings", () => {
 	});
 
 	it("search engine pin survives; unknown engine ids drop (auto-detect resumes) — search wave, 2026-09-20", () => {
+		const exa = sanitizeUserSettings({ version: 1, agent: { search: { engine: "exa" } } });
+		assert.deepEqual(exa?.agent?.search, { engine: "exa" });
 		const good = sanitizeUserSettings({ version: 1, agent: { search: { engine: "tavily" } } });
 		assert.deepEqual(good?.agent?.search, { engine: "tavily" });
 		const bad = sanitizeUserSettings({ version: 1, agent: { search: { engine: "google" } } });

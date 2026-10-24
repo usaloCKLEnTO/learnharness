@@ -22,6 +22,7 @@
 import type { SearchEngineId, SearchHit, SearchProvider, SearchStatus } from "../core/search.ts";
 import { keyValue } from "./keys.ts";
 import { effectiveSettings } from "./stores.ts";
+import { z } from "zod";
 
 /** The wire-callable shape the adapters close over (tests inject a stub). */
 type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
@@ -108,12 +109,42 @@ export function braveProvider(apiKey: string, fetchFn: FetchLike = fetch): Searc
 	};
 }
 
+const exaResponse = z.object({
+	results: z.array(z.object({
+		url: z.url(), title: z.string().nullish(),
+		highlights: z.array(z.string()).optional(), text: z.string().optional(),
+	})),
+});
+
+/** Exa Search API: the key stays in a header; highlights supply excerpts. */
+export function exaProvider(apiKey: string, fetchFn: FetchLike = fetch): SearchProvider {
+	return {
+		id: "exa",
+		async search(query, count) {
+			const response = await fetchFn("https://api.exa.ai/search", {
+				method: "POST",
+				headers: { "content-type": "application/json", "x-api-key": apiKey },
+				body: JSON.stringify({ query, numResults: Math.min(count, 20), type: "auto", contents: { highlights: true } }),
+				signal: AbortSignal.timeout(30_000),
+			});
+			if (!response.ok) throw new Error(`Exa search API ${response.status}`);
+			const decoded = exaResponse.safeParse(await response.json());
+			if (!decoded.success) throw new Error("Exa search API returned invalid results");
+			return decoded.data.results.map((result) => ({
+				title: result.title ?? result.url, url: result.url,
+				snippet: (result.highlights?.join(" ") || result.text || "").replace(/\n/g, " ").slice(0, 500),
+			}));
+		},
+	};
+}
+
 /** The engines this wave ships, in PREFERENCE order (both keys present,
  *  no explicit pin → the first live engine wins; owner decision
  *  2026-09-20: Tavily first — the AI-native search API the wave chose). */
 const ENGINE_ORDER: ReadonlyArray<{ id: SearchEngineId; envVar: string }> = [
 	{ id: "tavily", envVar: "TAVILY_API_KEY" },
 	{ id: "brave", envVar: "BRAVE_API_KEY" },
+	{ id: "exa", envVar: "EXA_API_KEY" },
 ];
 
 /** The engine's key (env-or-file; env wins) — null when the engine is
@@ -138,7 +169,7 @@ export function resolveSearchEngineFor(
 			return {
 				available: false,
 				engine: null,
-				reason: `search engine is set to "${pinned}" but its API key is missing — set the ${pinned === "tavily" ? "TAVILY_API_KEY" : "BRAVE_API_KEY"} key`,
+				reason: `search engine is set to "${pinned}" but its API key is missing — set the ${ENGINE_ORDER.find((engine) => engine.id === pinned)?.envVar} key`,
 				key: null,
 			};
 		}
@@ -151,7 +182,7 @@ export function resolveSearchEngineFor(
 	return {
 		available: false,
 		engine: null,
-		reason: "no search engine configured — set a Tavily or Brave search API key",
+		reason: "no search engine configured — set a Tavily, Brave, or Exa search API key",
 		key: null,
 	};
 }
@@ -165,6 +196,7 @@ export function searchStatus(): SearchStatus {
 		{
 			tavily: engineKey("tavily") ?? undefined,
 			brave: engineKey("brave") ?? undefined,
+			exa: engineKey("exa") ?? undefined,
 		},
 	);
 	return { available, engine, reason };
@@ -183,7 +215,9 @@ export function searchProvider(): SearchProvider | null {
 	const resolved = resolveSearchEngineFor(effectiveSettings().agent.search?.engine, {
 		tavily: engineKey("tavily") ?? undefined,
 		brave: engineKey("brave") ?? undefined,
+		exa: engineKey("exa") ?? undefined,
 	});
 	if (!resolved.available || !resolved.key) return null;
+	if (resolved.engine === "exa") return exaProvider(resolved.key);
 	return resolved.engine === "tavily" ? tavilyProvider(resolved.key) : braveProvider(resolved.key);
 }

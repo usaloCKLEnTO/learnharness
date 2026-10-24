@@ -48,6 +48,12 @@ export const AUTH_KEYS: readonly AuthKeyInfo[] = [
 		description: "Web-search engine for the researcher sub-agent — the alternative to Tavily. Setting the key activates it.",
 		docsUrl: "https://brave.com/search/api/",
 	},
+	{
+		id: "EXA_API_KEY",
+		label: "Exa",
+		description: "Web search with relevant page excerpts for the researcher sub-agent. Setting the key makes Exa available in the search-engine picker.",
+		docsUrl: "https://exa.ai/",
+	},
 ] as const;
 
 const AUTH_KEY_IDS: ReadonlySet<string> = new Set(AUTH_KEYS.map((k) => k.id));
@@ -161,6 +167,7 @@ export function validateKeyShape(id: string, rawValue: string): KeyShapeResult {
 				? nonEmpty(20)
 				: { ok: false, error: `${id} must start with "tvly-" (Tavily's key format)` };
 		case "BRAVE_API_KEY":
+		case "EXA_API_KEY":
 			// No public format — a length floor + paste hygiene only.
 			return nonEmpty(20);
 		case "DEEPGRAM_API_KEY":

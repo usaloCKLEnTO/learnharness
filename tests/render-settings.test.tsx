@@ -87,6 +87,10 @@ describe("AgentSection (thin SSR)", () => {
 	});
 
 	it("the search-engine row renders with its live reason (search wave 2026-09-20)", () => {
+		const exa = renderToStaticMarkup(
+			<AgentSection agent={{ search: { engine: "exa" } }} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />,
+		);
+		assert.ok(exa.includes("Exa"), "the Exa selection is visible");
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />);
 		assert.ok(html.includes('data-testid="search-engine-row"'), "the row");
 		assert.ok(html.includes('data-testid="search-engine-trigger"'), "the trigger");
