@@ -19,6 +19,7 @@
 
 import { Type, type Static } from "typebox";
 import { stripModelValueDebris } from "./value-debris.ts";
+import { parseQuestionTiming, type QuestionTiming } from "./question-timing.ts";
 
 // ─── shared types ───────────────────────────────────────────────────────────
 
@@ -469,6 +470,8 @@ export interface QuestionAnswerData {
 	explanation?: string; // quiz only (rendering)
 	dismissed?: boolean;
 	answeredAt: string;
+	/** Present on timed multiple-choice attempts; old records remain untimed. */
+	timing?: QuestionTiming;
 }
 
 /** Client-facing question payload — deliberately omits the answer. */
@@ -483,6 +486,7 @@ export interface ClientQuestion {
 
 /** What the server passes to the bridge when the learner answers. */
 export interface AnswerRequest {
+	timing?: QuestionTiming;
 	dontKnow?: boolean;
 	values?: string[]; // option values
 	other?: string; // ask "Other"
@@ -702,6 +706,7 @@ export function buildAnswer(qd: QuestionData, req: AnswerRequest, tool?: string)
 		thinking: req.thinking?.trim() || undefined,
 		readingThinking: req.readingThinking?.trim() || undefined,
 		answeredAt: new Date().toISOString(),
+		...(req.timing ? { timing: parseQuestionTiming(req.timing) } : {}),
 	};
 	// resolve selected option values → OptionAnswer (in display order)
 	if (req.values && req.values.length > 0) {
@@ -783,5 +788,7 @@ export function compactAnswerForModel(ad: QuestionAnswerData): Record<string, un
 	const thinking = ad.thinking ?? ad.note;
 	if (thinking) out.thinking = thinking;
 	if (ad.readingThinking) out.thinkingWhileReading = ad.readingThinking;
+	const timing = parseQuestionTiming(ad.timing);
+	if (timing) out.timing = timing;
 	return out;
 }

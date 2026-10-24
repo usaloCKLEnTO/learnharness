@@ -2292,6 +2292,7 @@ function DockOverlay({
 					>
 							{pending ? (
 								<QuestionDock
+										key={pending.toolCallId}
 									toolName={pending.tool as "quiz" | "probe" | "ask_user_question" | "explain" | "recall"}
 									toolCallId={pending.toolCallId}
 									input={pending.input as never}

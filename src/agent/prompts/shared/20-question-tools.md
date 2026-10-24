@@ -19,6 +19,10 @@ His thinking is the most precise transfer of his understanding you get — read 
 - Teach-phase check answers may ALSO carry `thinkingWhileReading` — what he was thinking while reading your teaching. Two distinct channels; never conflate them.
 - His thinking fields are often TRANSCRIBED SPEECH (he dictates, thinking out loud). Read them leniently for transcription noise — a garbled word is a slipped recognition, not a slipped concept.
 
+### Measured answer timing
+
+Multiple-choice answers may include `timing`: `elapsedMs` from question reveal to the Submit click, `activeMs` while the app was focused, `interruptions` when focus was lost, and `selections` with the choices and elapsed/active milliseconds at each change. The last selection is the final choice, not necessarily the first choice. Submission time can include thinking aloud or typing; transcription upload and network waiting are excluded. Use timing alongside correctness, confidence, and reasoning. App focus is not proof of attention, and time away is not proof of difficulty. Answers without timing have no measured duration.
+
 ### `ask_user_question`
 
 Asks a single question and waits. He can always pick "Other" and type. If you recommend an option, list it first with "(Recommended)" appended. Multiple questions → multiple calls.

@@ -7,7 +7,7 @@ import { ThinkingBlock } from "@/components/thinking-block";
 import { cn } from "@/lib/utils";
 import { MessageResponse } from "@/components/ai-elements/message";
 import type { QuestionAnswerData } from "@/src/core";
-import { parseAskInput, parseQuizInput } from "@/src/core";
+import { formatQuestionTime, parseQuestionTiming, parseAskInput, parseQuizInput } from "@/src/core";
 
 /**
  * Static rendering of an answered question (tool part in `output-available`).
@@ -31,6 +31,9 @@ export function AnsweredCard({ answer, input }: { answer: QuestionAnswerData; in
 
 	const isQuiz = answer.kind === "quiz";
 	const isExplain = answer.kind === "explain";
+	const timing = parseQuestionTiming(answer.timing);
+	const firstSelection = timing?.selections[0];
+	const finalSelection = timing?.selections.at(-1);
 	const selectedIdx = new Set(answer.answers.map((a) => a.index));
 	const correctIdx = new Set(answer.correctIndices ?? []);
 	// The question's own context rides the ORIGINAL CALL, not the answer
@@ -85,6 +88,14 @@ export function AnsweredCard({ answer, input }: { answer: QuestionAnswerData; in
 						<span className="rounded bg-red-500/15 px-1.5 py-0.5 text-red-500">incorrect</span>
 					))}
 			</div>
+			{timing && (
+				<div data-testid="answered-timing" className="mb-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs tabular-nums text-muted-foreground">
+					{timing.selections.length > 1 && firstSelection && <span>First selection {formatQuestionTime(firstSelection.elapsedMs)}</span>}
+					{finalSelection && <span>Selected at {formatQuestionTime(finalSelection.elapsedMs)}</span>}
+					<span>Submitted at {formatQuestionTime(timing.elapsedMs)}</span>
+					{timing.interruptions > 0 && <span>Active {formatQuestionTime(timing.activeMs)} · {timing.interruptions} {timing.interruptions === 1 ? "interruption" : "interruptions"}</span>}
+				</div>
+			)}
 			<div className="mb-3 font-medium">
 				<MessageResponse>{answer.questionText}</MessageResponse>
 			</div>

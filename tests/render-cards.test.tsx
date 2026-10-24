@@ -399,6 +399,24 @@ describe("math rendering (streamdown + KaTeX)", () => {
 	});
 });
 
+describe("timed answer records", () => {
+	it("shows selection, submission and interruption measurements after answering", () => {
+		const answer = buildAnswer(quizQD(), { values: ["Mercury"], timing: {
+			elapsedMs: 112_000, activeMs: 102_000, interruptions: 1,
+			selections: [
+				{ answers: [{ index: 1, label: "Venus" }], dontKnow: false, elapsedMs: 51_000, activeMs: 51_000 },
+				{ answers: [{ index: 2, label: "Mercury" }], dontKnow: false, elapsedMs: 74_000, activeMs: 64_000 },
+			],
+		} });
+		const html = renderToStaticMarkup(<AnsweredCard answer={answer} />);
+		for (const text of ["correct", "First selection 0:51", "Selected at 1:14", "Submitted at 1:52", "Active 1:42", "interruption"]) assert.ok(html.includes(text), text);
+	});
+	it("keeps old answers untimed", () => {
+		const html = renderToStaticMarkup(<AnsweredCard answer={buildAnswer(quizQD(), { values: ["Mercury"] })} />);
+		assert.doesNotMatch(html, /answered-timing|Selected at|Submitted at/);
+	});
+});
+
 describe("teach-check reveal (W5 phase separation)", () => {
 	// The collapsed dock renders the bar AND the hidden form (it stays mounted
 	// so a half-made selection survives) — assertions target the bar species.
@@ -416,11 +434,13 @@ describe("teach-check reveal (W5 phase separation)", () => {
 		);
 		assert.ok(html.includes('data-testid="teach-check-reveal"'), "invitation affordance present");
 		assert.match(html, /Check your understanding/);
-		assert.match(html, /Which planet is closest/, "question teaser invites, not minimizes");
-		assert.match(html, /Open/, "a clear reveal action");
+		const invitation = html.slice(0, html.indexOf("</button>"));
+		assert.doesNotMatch(invitation, /Which planet is closest/, "the timed question stays hidden until reveal");
+		assert.match(invitation, /Start/, "reveal also starts the timer");
+		assert.match(html, /<div hidden="" inert=""/, "hidden answer controls cannot receive focus");
 	});
 
-	it("probe questions keep the plain collapsed bar (no invitation copy)", () => {
+	it("probe questions offer Start question before exposing the timed prompt", () => {
 		const html = renderToStaticMarkup(
 				<QuestionDock
 					toolName="quiz"
@@ -433,7 +453,7 @@ describe("teach-check reveal (W5 phase separation)", () => {
 		);
 		assert.ok(html.includes('data-testid="question-dock-bar"'), "the scroll-collapse strip");
 		assert.ok(!html.includes("Check your understanding"), "no invitation copy outside teach phase");
-		assert.match(html, /Answer/, "the strip keeps its Answer affordance");
+		assert.match(html, /Start question/, "a clear start action");
 	});
 
 	it("after the reveal, the teach check renders the full form (probe default, unchanged)", () => {

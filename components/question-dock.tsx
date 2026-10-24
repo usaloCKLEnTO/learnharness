@@ -35,6 +35,7 @@ import {
 	type Phase3,
 } from "@/src/core";
 import { CONFIDENCE_COLORS, confidenceRailStyle } from "@/components/confidence-rail";
+import { QuestionTimerReadout, useQuestionTimer, type QuestionTimer } from "@/components/question-timer";
 
 /**
  * The question dock — a pending quiz/ask REPLACES the chat composer: the
@@ -105,6 +106,9 @@ export function QuestionDock({
 	dictationClaim = true,
 	compactionRunning = false,
 }: QuestionDockProps) {
+	const timed = toolName === "quiz" || toolName === "probe";
+	const timer = useQuestionTimer(toolCallId, timed);
+	const waitingToStart = timed && !timer.clock;
 	// The probe-phase names (owner, 2026-10-09) canonicalize onto their
 	// teach twins for every dock concern — parse dispatch, labels, kinds:
 	// the probe quiz ("probe") is quiz-shaped, the probe free-recall
@@ -132,11 +136,12 @@ export function QuestionDock({
 	}
 	return (
 		<>
-			{!expanded && (
+			{(!expanded || waitingToStart) && (
 				<QuestionDockBar
 					toolName={canonical}
 					question={parsed.question}
-					onExpand={onExpand}
+					onExpand={() => { timer.start(); onExpand(); }}
+					startTimer={waitingToStart}
 					variant={reveal ? "reveal" : "collapsed"}
 					toolLabel={toolLabel}
 					label={
@@ -147,16 +152,17 @@ export function QuestionDock({
 					}
 				/>
 			)}
-			<div className={expanded ? "dock-variant" : "invisible h-0 overflow-hidden"}>
+			<div hidden={waitingToStart} inert={waitingToStart} className={expanded ? "dock-variant" : "invisible h-0 overflow-hidden"}>
 				<QuestionDockForm
 					toolName={toolName}
 					toolCallId={toolCallId}
 					input={parsed}
 					phase={phase}
-					active={expanded}
+					active={expanded && !waitingToStart}
 					onSubmit={onSubmit}
 					onEscape={onEscape}
-					dictationClaim={dictationClaim}
+					dictationClaim={dictationClaim && !waitingToStart}
+					timer={timed ? timer : undefined}
 					compactionRunning={compactionRunning}
 				/>
 			</div>
@@ -188,6 +194,7 @@ export function QuestionDockBar({
 	variant = "collapsed",
 	label,
 	toolLabel,
+	startTimer = false,
 }: {
 	toolName: "quiz" | "ask_user_question" | "explain";
 	question: string;
@@ -200,12 +207,13 @@ export function QuestionDockBar({
 	/** The chip's TOOL display name (owner 2026-10-09): probe-phase calls
 	 *  label Probe/Recall — the phase boundary visible in the composer. */
 	toolLabel?: string;
+	startTimer?: boolean;
 }) {
-	if (variant === "reveal") {
+	if (variant === "reveal" || startTimer) {
 		return (
 			<button
 				type="button"
-				data-testid="teach-check-reveal"
+				data-testid={variant === "reveal" ? "teach-check-reveal" : "question-dock-bar"}
 				onClick={onExpand}
 				className="dock-variant flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/40"
 			>
@@ -213,11 +221,11 @@ export function QuestionDockBar({
 					<PlayIcon className="size-3.5" />
 				</span>
 				<span className="min-w-0 flex-1">
-					<span className="block text-sm font-medium">Check your understanding</span>
-					<span className="block truncate text-xs text-muted-foreground">{teaserText(question)}</span>
+					<span className="block text-sm font-medium">{variant === "reveal" ? "Check your understanding" : "Start question"}</span>
+					<span className="block truncate text-xs text-muted-foreground">{startTimer ? "Reveal the question and start the timer" : teaserText(question)}</span>
 				</span>
 				<span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-					Open <ChevronRightIcon className="size-3.5" />
+					{startTimer ? "Start" : "Open"} <ChevronRightIcon className="size-3.5" />
 				</span>
 			</button>
 		);
@@ -253,7 +261,8 @@ function QuestionDockForm({
 	onEscape,
 	dictationClaim = true,
 	compactionRunning = false,
-}: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal">) {
+	timer,
+}: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal"> & { timer?: QuestionTimer }) {
 	const kind = toolQuestionKind(toolName);
 
 	// Canonical QuestionData, built once per question. Quiz options are
@@ -312,6 +321,16 @@ function QuestionDockForm({
 	// "Other…" row in a multi-select must never clear already-picked
 	// options, and picking an option must never clear a typed custom answer.
 	const [sel, setSel] = useState<DockSelection>(emptyDockSelection());
+	const restoredSelection = useRef(false);
+	useEffect(() => {
+		if (!timer?.clock || restoredSelection.current) return;
+		restoredSelection.current = true;
+		const last = timer.clock.timing.selections.at(-1);
+		if (last) setSel({
+			selected: new Set(last.answers.filter((a) => qd.options[a.index - 1]?.label === a.label).map((a) => a.index - 1)),
+			dontKnow: last.dontKnow, otherSelected: false,
+		});
+	}, [timer?.clock]);
 	// The learner's transfer channel — thinking, never "a note".
 	const [thinking, setThinking] = useState("");
 	const [other, setOther] = useState("");
@@ -357,7 +376,13 @@ function QuestionDockForm({
 		dictationClaim,
 	);
 
-	const toggle = (idx: number) => setSel(toggleOption(selectMode, sel, idx));
+	const updateSelection = (next: DockSelection) => {
+		if (timer?.clock?.stopped) return;
+		timer?.select([...next.selected].sort((a, b) => a - b).map((index) => ({ index: index + 1, label: qd.options[index]!.label })), next.dontKnow);
+		setSel(next);
+	};
+	const toggle = (idx: number) => updateSelection(toggleOption(selectMode, sel, idx));
+	const toggleDontKnow = () => updateSelection({ ...sel, selected: new Set(), otherSelected: false, dontKnow: !sel.dontKnow });
 
 	const canSubmit =
 		qd.mode === "text"
@@ -366,6 +391,9 @@ function QuestionDockForm({
 
 	const submit = () => {
 		if (!canSubmit || compactionRunning) return;
+		if (kind === "quiz" && !timer?.clock) return;
+		// The learner is done now; ASR flushing and transport must not inflate response time.
+		timer?.stop();
 		/* FINISH DICTATION FIRST (owner, 2026-10-01): Enter may arrive while
 		 * a run is live with reasoning still in Deepgram's hands. Stop the
 		 * run, let the last finals land in the target field, and only then
@@ -381,6 +409,7 @@ function QuestionDockForm({
 	const doSubmit = () => {
 		if (!canSubmit) return;
 		const req: AnswerRequest = {
+			timing: timer?.stop(),
 			dontKnow: sel.dontKnow,
 			values: [...sel.selected].map((i) => qd.options[i]!.value),
 			other: sel.otherSelected ? other : undefined,
@@ -430,7 +459,7 @@ function QuestionDockForm({
 	const kbdAct = (idx: number) => {
 		if (idx < optionCount) toggle(idx);
 		else if (kind === "quiz")
-			setSel((prev) => ({ ...prev, selected: new Set(), otherSelected: false, dontKnow: !prev.dontKnow }));
+			toggleDontKnow();
 		else {
 			// Space on the ask's Other row (owner refinement round,
 			// 2026-09-24): SELECTING it focuses the input for typing, but
@@ -621,9 +650,7 @@ function QuestionDockForm({
 						{kind === "quiz" && (
 							<button
 								type="button"
-								onClick={() =>
-									setSel((prev) => ({ ...prev, selected: new Set(), otherSelected: false, dontKnow: !prev.dontKnow }))
-								}
+									onClick={toggleDontKnow}
 								data-kbdrow={optionCount}
 								aria-pressed={sel.dontKnow}
 								className={cn(
@@ -895,9 +922,9 @@ function QuestionDockForm({
 						/>
 					)}
 					<div className="flex items-center justify-between gap-2 p-1">
-						<span aria-hidden className="pl-1.5 text-xs text-muted-foreground">
+						{timer?.clock ? <QuestionTimerReadout timing={timer.clock.timing} stopped={timer.clock.stopped} /> : <span aria-hidden className="pl-1.5 text-xs text-muted-foreground">
 								{compactionRunning ? "compacting session…" : "↵ submits · ⇧↵ newline"}
-						</span>
+						</span>}
 						<Button
 							type="submit"
 							disabled={!canSubmit || compactionRunning}
