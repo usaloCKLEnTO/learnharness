@@ -35,7 +35,8 @@ const path = require("node:path");
 // renderer owns the number; this is the IPC widen target).
 const SIDEBAR_AUTOCLOSE = 928;
 
-const PRODUCT_NAME = "LearnHarness";
+const FAMILY_BUILD = require("../package.json").familyBuild === true;
+const PRODUCT_NAME = FAMILY_BUILD ? "LearnHarness Family" : "LearnHarness";
 
 // APP NAME → userData (owner, 2026-10-10): the Application Support dir is
 // exactly "LearnHarness" in dev AND packaged. Packaged Electron would
@@ -444,6 +445,8 @@ function installUpdateNow() {
 }
 
 function setupAutoUpdater() {
+	// This local fork is updated by rebuilding; upstream releases omit its gateway support.
+	if (FAMILY_BUILD) return;
 	if (!app.isPackaged) {
 		log("auto-update: dev build — updater disabled");
 		return;

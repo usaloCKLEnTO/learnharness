@@ -19,6 +19,7 @@ import { runVisualMaker } from "../src/agent/subagents/visual-maker.ts";
 import { runPdfReaderAgent } from "../src/agent/subagents/pdf-reader.ts";
 import type { HeadlessApi } from "../src/agent/subagents/headless.ts";
 import { AUTH_PROVIDER_KEYS } from "../src/core/auth-keys.ts";
+import { createLiteLLMProvider } from "../src/agent/litellm-provider.ts";
 import { providerEventsDir } from "../src/agent/provider-events.ts";
 
 const OR_KEY = "dummy-openrouter-MUST-NOT-REACH-other-endpoints";
@@ -245,6 +246,14 @@ describe("provider-neutral raw agent loops", { concurrency: false }, () => {
 			const env = Object.fromEntries(AUTH_PROVIDER_KEYS.map(({ envVar }) => [envVar, `dummy-resolver-${envVar}`]));
 			const models = createModels({ authContext: { env: async (name) => env[name], fileExists: async () => false } });
 			for (const provider of builtinProviders()) models.setProvider(provider);
+			models.setProvider(createLiteLLMProvider({
+				baseUrl: "https://gateway.test/v1",
+				models: [{
+					id: "gateway-model", name: "Gateway", contextWindow: 8192, maxTokens: 1024,
+					reasoning: false, input: ["text"],
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				}],
+			}));
 			for (const { id, envVar } of AUTH_PROVIDER_KEYS) {
 				const resolved = await models.getAuth(id);
 				assert.ok(resolved, id);

@@ -1,0 +1,12 @@
+extends: electron-builder.yml
+appId: com.vardalab.LearnHarnessFamily
+productName: LearnHarness Family
+extraMetadata:
+  familyBuild: true
+mac:
+  icon: build/icon.icns
+  identity: '-'
+  notarize: false
+  target:
+    - dmg
+publish: null

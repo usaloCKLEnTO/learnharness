@@ -143,3 +143,8 @@ export const PROMPTS_OVERRIDE_DIR = path.join(DATA_ROOT, "prompts");
 export const AUTH_FILE = process.env.LH_AUTH_FILE
 	? path.resolve(process.env.LH_AUTH_FILE)
 	: path.join(ROOT, "auth.json");
+
+/** Optional local OpenAI-compatible gateway catalog; credentials stay in auth.json. */
+export const PROVIDER_FILE = process.env.LH_PROVIDER_FILE
+	? path.resolve(process.env.LH_PROVIDER_FILE)
+	: path.join(path.dirname(AUTH_FILE), "providers.json");

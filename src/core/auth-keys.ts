@@ -67,6 +67,7 @@ export interface AuthProviderInfo {
 
 /**
  * THE MODEL-PROVIDER KEY TABLE (provider-keys interlude, 2026-09-19):
+ * LiteLLM is the local gateway addition; all other rows follow pi-ai.
  * every pi-ai provider that takes a PLAIN api-key env var — derived from
  * pi-ai's own provider→env-var table at generation time, so it can never
  * drift from what pi actually reads: tests/auth-provider-keys.test.ts
@@ -95,6 +96,7 @@ export const AUTH_PROVIDER_KEYS: readonly AuthProviderInfo[] = [
 	{ id: "groq", envVar: "GROQ_API_KEY", label: "Groq" },
 	{ id: "huggingface", envVar: "HF_TOKEN", label: "Hugging Face" },
 	{ id: "kimi-coding", envVar: "KIMI_API_KEY", label: "Kimi For Coding" },
+	{ id: "litellm", envVar: "LITELLM_API_KEY", label: "LiteLLM" },
 	{ id: "meta", envVar: "META_API_KEY", label: "Meta" },
 	{ id: "minimax", envVar: "MINIMAX_API_KEY", label: "MiniMax" },
 	{ id: "minimax-cn", envVar: "MINIMAX_CN_API_KEY", label: "MiniMax CN" },
