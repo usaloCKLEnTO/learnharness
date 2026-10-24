@@ -9,6 +9,8 @@ mac:
   entitlements: build/entitlements.family.mac.plist
   entitlementsInherit: build/entitlements.family.mac.plist
   notarize: false
+  extendInfo:
+    NSLocalNetworkUsageDescription: "LearnHarness connects to your configured local AI gateway for teaching and dictation."
   target:
     - dmg
 publish: null

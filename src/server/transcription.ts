@@ -44,7 +44,12 @@ export function createTranscriptionService(deps: TranscriptionDependencies) {
 					return Response.json({ message: "Dictation service returned an invalid transcript" }, { status: 502 });
 				}
 				return Response.json({ text: raw.text.trim() });
-			} catch {
+			} catch (cause) {
+				const error = cause instanceof Error ? cause : new Error("Unknown transcription failure");
+				const detail = error.message.replaceAll(key, "<redacted>").slice(0, 200);
+				const nested = error.cause;
+				const code = nested && typeof nested === "object" && "code" in nested ? String(nested.code) : "none";
+				console.error(`[transcription] ${error.name}: ${detail}; cause=${code}`);
 				return Response.json({ message: "Dictation service is unavailable" }, { status: 502 });
 			}
 		},

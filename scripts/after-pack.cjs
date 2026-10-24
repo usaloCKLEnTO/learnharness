@@ -20,6 +20,12 @@ const path = require("node:path");
 module.exports = async function afterPack(context) {
 	if (context.electronPlatformName !== "darwin") return;
 	const appBundle = path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`);
+	if (context.packager.config.extraMetadata?.familyBuild === true) {
+		const { familyMacIdentity } = require("./family-macos-identity.cjs");
+		const executable = path.join(appBundle, "Contents", "MacOS", context.packager.appInfo.productFilename);
+		fs.writeFileSync(executable, familyMacIdentity(fs.readFileSync(executable), context.packager.appInfo.id));
+		console.log("[after-pack] assigned a stable family Local Network identity before signing");
+	}
 	const target = path.join(appBundle, "Contents", "Resources", "icon.icns");
 	const source = path.join(context.packager.info.projectDir, "build", "icon.icns");
 	fs.copyFileSync(source, target);
